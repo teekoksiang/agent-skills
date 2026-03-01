@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><!-- CARD_NAME --> — Expense Analysis</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f7fa; color: #333; }
+
+/* Header — use the card issuer's brand color for gradient */
+.header { background: linear-gradient(135deg, #e4002b 0%, #b8001f 100%); color: #fff; padding: 32px 40px; }
+.header-inner { max-width: 1100px; margin: 0 auto; }
+.header h1 { font-size: 26px; font-weight: 600; }
+.header p { opacity: 0.85; margin-top: 4px; font-size: 14px; }
+
+/* Sticky Mini Header (appears on scroll) — same brand gradient */
+.mini-header { position: fixed; top: -60px; left: 0; right: 0; z-index: 150; background: linear-gradient(135deg, #e4002b 0%, #b8001f 100%); color: #fff; padding: 0 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.15); transition: top 0.3s ease; display: flex; align-items: center; height: 48px; }
+.mini-header.visible { top: 0; }
+.mini-header-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; width: 100%; gap: 20px; }
+.mini-header .mini-title { font-size: 14px; font-weight: 700; white-space: nowrap; }
+.mini-header .mini-stats { display: flex; gap: 16px; margin-left: auto; font-size: 12px; opacity: 0.9; }
+.mini-header .mini-stats span { white-space: nowrap; }
+.mini-header .mini-stats strong { font-weight: 700; }
+.mini-sep { width: 1px; height: 18px; background: rgba(255,255,255,0.3); }
+
+/* Sticky Nav */
+.nav { position: sticky; top: 0; z-index: 100; background: #fff; border-bottom: 1px solid #e5e5e5; padding: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: top 0.3s ease; }
+.nav.pushed { top: 48px; }
+.nav-inner { max-width: 1100px; margin: 0 auto; display: flex; gap: 0; overflow-x: auto; }
+.nav a { padding: 12px 18px; font-size: 13px; font-weight: 500; color: #666; text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; }
+.nav a:hover { color: #e4002b; border-bottom-color: #fca5a5; }
+.nav a.active { color: #e4002b; border-bottom-color: #e4002b; }
+
+/* Scroll offset for anchor targets — accounts for sticky nav + mini header */
+[id="overview"], [id="insights"], [id="charts"], [id="categories"], [id="transactions"], [id="actions"] { scroll-margin-top: 110px; }
+
+.container { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
+
+/* Section Title */
+.sec-title { font-size: 18px; font-weight: 700; color: #222; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+.sec-title .sec-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; flex-shrink: 0; }
+.sec-title .sec-count { font-size: 12px; font-weight: 500; color: #999; margin-left: auto; }
+
+/* Summary Cards — 4-column responsive grid */
+.summary-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+@media (max-width: 900px) { .summary-cards { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 500px) { .summary-cards { grid-template-columns: 1fr; } }
+.card { background: #fff; border-radius: 12px; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 5px; }
+.card .value { font-size: 24px; font-weight: 700; color: #222; }
+.card .value.red { color: #e4002b; }
+.card .value.green { color: #16a34a; }
+.card .value.blue { color: #2563eb; }
+.card .value.purple { color: #7c3aed; }
+.card .value.amber { color: #b45309; }
+.card .sub { font-size: 11px; color: #999; margin-top: 3px; }
+
+/* Multi-month delta indicators on summary cards */
+.card .delta-tag { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; margin-left: 8px; vertical-align: middle; }
+.card .delta-tag.up { background: #fef2f2; color: #dc2626; }
+.card .delta-tag.down { background: #ecfdf5; color: #16a34a; }
+.card .delta-tag.neutral { background: #f0f4f8; color: #64748b; }
+.card .delta-note { font-size: 10px; color: #bbb; font-style: italic; display: block; margin-top: 2px; }
+
+/* Insights — 2-column grid with color-coded cards */
+.insights { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 24px; }
+.insight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 768px) { .insight-grid { grid-template-columns: 1fr; } }
+.insight-item { display: flex; gap: 12px; padding: 12px 14px; border-radius: 10px; align-items: flex-start; }
+.insight-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.insight-item h4 { font-size: 13px; font-weight: 600; color: #222; margin-bottom: 2px; }
+.insight-item p { font-size: 12px; color: #666; line-height: 1.4; }
+.insight-warn { background: #fef3c7; } .insight-warn .insight-icon { background: #fbbf24; }
+.insight-good { background: #ecfdf5; } .insight-good .insight-icon { background: #34d399; }
+.insight-alert { background: #fef2f2; } .insight-alert .insight-icon { background: #f87171; }
+.insight-info { background: #eff6ff; } .insight-info .insight-icon { background: #60a5fa; }
+
+/* Sections & Chart containers */
+.section { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 24px; }
+.section h2 { font-size: 16px; font-weight: 600; margin-bottom: 14px; color: #222; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; }
+.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+@media (max-width: 768px) { .chart-row { grid-template-columns: 1fr; } }
+.chart-box { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.chart-box h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #444; }
+canvas { max-height: 300px; }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 9px 12px; background: #f8f9fb; color: #666; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; }
+td { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; }
+tr:hover td { background: #fafbfc; }
+.cat-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
+.amount { text-align: right; font-variant-numeric: tabular-nums; }
+.pct { text-align: right; color: #888; font-size: 12px; }
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { color: #e4002b; }
+th .sort-arrow { font-size: 10px; margin-left: 3px; opacity: 0.4; }
+th .sort-arrow.active { opacity: 1; color: #e4002b; }
+
+/* Filter controls */
+.filter-section { margin-bottom: 14px; }
+.filter-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.filter-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #888; min-width: 70px; }
+.filter-bar { display: flex; flex-wrap: wrap; gap: 5px; }
+.filter-btn { padding: 5px 12px; border-radius: 99px; border: 1.5px solid #e0e0e0; background: #fff; font-size: 11px; cursor: pointer; font-weight: 500; transition: all 0.15s; }
+.filter-btn:hover { border-color: #aaa; }
+.filter-btn.active { background: #222; color: #fff; border-color: #222; }
+.merchant-select { padding: 6px 12px; border-radius: 99px; border: 1.5px solid #e0e0e0; background: #fff; font-size: 12px; font-weight: 500; cursor: pointer; min-width: 200px; color: #333; }
+.merchant-select:focus { border-color: #222; outline: none; }
+.filter-reset { padding: 5px 12px; border-radius: 99px; border: 1.5px solid #e0e0e0; background: #fff; font-size: 11px; cursor: pointer; font-weight: 600; color: #e4002b; transition: all 0.15s; }
+.filter-reset:hover { background: #fef2f2; border-color: #fca5a5; }
+.search-box { padding: 6px 14px; border-radius: 99px; border: 1.5px solid #e0e0e0; font-size: 12px; width: 200px; }
+.search-box:focus { border-color: #222; outline: none; }
+
+/* Anomaly filter toggle */
+.filter-btn.anomaly-btn { border-color: #fbbf24; color: #92400e; background: #fffbeb; }
+.filter-btn.anomaly-btn.active { background: #f59e0b; color: #fff; border-color: #f59e0b; }
+
+/* Anomaly flagging */
+.anomaly-row td { background: #fffbeb !important; }
+.anomaly-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; color: #d97706; background: #fef3c7; padding: 2px 7px; border-radius: 99px; margin-left: 6px; white-space: nowrap; position: relative; cursor: help; }
+.anomaly-badge.high { color: #dc2626; background: #fef2f2; }
+.anomaly-badge .anomaly-tip { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; padding: 8px 12px; border-radius: 8px; font-size: 11px; font-weight: 400; line-height: 1.45; white-space: normal; width: 230px; z-index: 300; box-shadow: 0 4px 12px rgba(0,0,0,0.2); pointer-events: none; }
+.anomaly-badge .anomaly-tip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: #1e293b; }
+.anomaly-badge:hover .anomaly-tip { display: block; }
+
+/* Action Plan */
+.action-plan { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 24px; }
+.savings-header { display: flex; align-items: center; gap: 16px; background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border-radius: 10px; padding: 16px 20px; margin-bottom: 18px; }
+.savings-header .big-num { font-size: 30px; font-weight: 800; color: #16a34a; white-space: nowrap; }
+.savings-header p { font-size: 13px; color: #15803d; }
+.action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 768px) { .action-grid { grid-template-columns: 1fr; } }
+.action-card { border-radius: 10px; padding: 18px; }
+.action-card.high { background: #fef2f2; border: 1.5px solid #fecaca; }
+.action-card.med { background: #fffbeb; border: 1.5px solid #fde68a; }
+.action-card.low { background: #eff6ff; border: 1.5px solid #bfdbfe; }
+.action-card.good { background: #f0fdf4; border: 1.5px solid #bbf7d0; }
+.action-badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; padding: 3px 10px; border-radius: 99px; margin-bottom: 8px; }
+.action-card.high .action-badge { background: #ef4444; color: #fff; }
+.action-card.med .action-badge { background: #f59e0b; color: #fff; }
+.action-card.low .action-badge { background: #3b82f6; color: #fff; }
+.action-card.good .action-badge { background: #16a34a; color: #fff; }
+.action-card h4 { font-size: 13px; font-weight: 700; color: #222; margin-bottom: 6px; }
+.action-card .action-spent { font-size: 12px; color: #888; margin-bottom: 8px; }
+.action-card .action-spent strong { color: #222; }
+.action-steps { list-style: none; padding: 0; margin: 0 0 10px 0; }
+.action-steps li { font-size: 12px; color: #444; padding: 4px 0 4px 22px; position: relative; line-height: 1.4; border-bottom: 1px dashed #e5e5e5; }
+.action-steps li:last-child { border-bottom: none; }
+.action-steps li::before { content: ''; position: absolute; left: 0; top: 8px; width: 13px; height: 13px; border: 2px solid #ccc; border-radius: 3px; }
+.action-card.high .action-steps li::before { border-color: #fca5a5; }
+.action-card.med .action-steps li::before { border-color: #fcd34d; }
+.action-card.low .action-steps li::before { border-color: #93c5fd; }
+.action-card.good .action-steps li::before { border-color: #86efac; }
+.action-save { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; }
+.action-card.high .action-save { background: #fee2e2; color: #dc2626; }
+.action-card.med .action-save { background: #fef3c7; color: #b45309; }
+.action-card.low .action-save { background: #dbeafe; color: #1d4ed8; }
+.action-card.good .action-save { background: #dcfce7; color: #15803d; }
+
+/* Quick Wins */
+.quick-wins { margin-top: 18px; }
+.quick-wins table { font-size: 13px; }
+.quick-wins th { background: #f0fdf4; color: #15803d; }
+.quick-wins .qw-action { font-weight: 600; color: #222; }
+.quick-wins .qw-save { font-weight: 700; color: #16a34a; text-align: right; }
+.quick-wins .qw-effort { text-align: center; }
+.effort-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 2px; }
+.effort-easy .effort-dot { background: #16a34a; }
+.effort-med .effort-dot { background: #f59e0b; }
+
+/* Budget progress bars */
+.budget-section { margin-top: 16px; }
+.budget-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+.budget-row:last-child { border-bottom: none; }
+.budget-cat { min-width: 120px; font-size: 13px; font-weight: 600; color: #333; display: flex; align-items: center; gap: 7px; }
+.budget-bar-wrap { flex: 1; background: #f0f0f0; border-radius: 99px; height: 20px; position: relative; overflow: hidden; }
+.budget-bar-fill { height: 100%; border-radius: 99px; transition: width 0.6s ease; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; }
+.budget-bar-fill span { font-size: 10px; font-weight: 700; color: #fff; white-space: nowrap; }
+.budget-bar-fill.safe { background: linear-gradient(90deg, #22c55e, #16a34a); }
+.budget-bar-fill.warn { background: linear-gradient(90deg, #f59e0b, #d97706); }
+.budget-bar-fill.over { background: linear-gradient(90deg, #ef4444, #dc2626); }
+.budget-values { min-width: 130px; text-align: right; font-size: 12px; color: #666; }
+.budget-values strong { color: #222; }
+.budget-legend { display: flex; gap: 16px; margin-top: 10px; font-size: 11px; color: #888; }
+.budget-legend span { display: flex; align-items: center; gap: 4px; }
+.budget-legend .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.budget-input { width: 60px; padding: 2px 6px; border: 1.5px solid #e0e0e0; border-radius: 6px; font-size: 12px; font-weight: 600; text-align: right; color: #333; background: #fafafa; }
+.budget-input:focus { border-color: #2563eb; outline: none; background: #fff; }
+
+/* Fixed vs variable legend chip */
+.chip-legend { display: flex; gap: 12px; margin-top: 8px; font-size: 11px; color: #666; }
+.chip-legend span { display: flex; align-items: center; gap: 5px; }
+.chip-legend .chip-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+/* Fixed breakdown detail list */
+.fixed-breakdown { margin-top: 10px; font-size: 12px; color: #555; }
+.fixed-breakdown .fb-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #eee; }
+.fixed-breakdown .fb-row:last-child { border-bottom: none; }
+.fixed-breakdown .fb-cat { display: flex; align-items: center; gap: 6px; }
+.fixed-breakdown .fb-amt { font-weight: 600; font-variant-numeric: tabular-nums; }
+.fixed-breakdown .fb-header { font-weight: 700; color: #333; font-size: 12px; margin-bottom: 4px; }
+
+/* Scroll to top */
+.scroll-top { position: fixed; bottom: 24px; right: 24px; width: 42px; height: 42px; border-radius: 50%; background: #e4002b; color: #fff; border: none; font-size: 20px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2); display: none; z-index: 200; transition: opacity 0.2s; }
+.scroll-top:hover { opacity: 0.85; }
+
+.footer { text-align: center; padding: 20px; color: #aaa; font-size: 12px; }
+@media print { .nav, .scroll-top, .filter-section, .filter-reset, .mini-header, .budget-section { display: none !important; } body { background: #fff; } }
+</style>
+</head>
+<body>
+
+<!-- Mini header (appears when scrolling past main header) -->
+<div class="mini-header" id="miniHeader">
+  <div class="mini-header-inner">
+    <span class="mini-title"><!-- CARD_NAME --> — <!-- STATEMENT_MONTH --></span>
+    <div class="mini-stats">
+      <span>Spent: <strong><!-- CURRENCY_SYMBOL --><!-- TOTAL_SPENDING --></strong></span>
+      <span class="mini-sep"></span>
+      <span>Due: <strong><!-- CURRENCY_SYMBOL --><!-- AMOUNT_DUE --></strong></span>
+      <span class="mini-sep"></span>
+      <span><!-- TRANSACTION_COUNT --> transactions</span>
+    </div>
+  </div>
+</div>
+
+<div class="header" id="mainHeader">
+  <div class="header-inner">
+    <h1><!-- CARD_NAME --> — Expense Analysis</h1>
+    <p>Statement period: <!-- PERIOD_START --> – <!-- PERIOD_END --> &nbsp;|&nbsp; Card ending <!-- CARD_LAST4 --> &nbsp;|&nbsp; Statement date: <!-- STATEMENT_DATE --></p>
+  </div>
+</div>
+
+<nav class="nav" id="mainNav"><div class="nav-inner">
+  <a href="#overview">Overview</a>
+  <a href="#insights">Insights</a>
+  <a href="#charts">Charts</a>
+  <a href="#categories">Categories</a>
+  <a href="#transactions">Transactions</a>
+  <a href="#actions">Action Plan</a>
+</div></nav>
+
+<div class="container">
+
+  <!-- SECTION 1: STATEMENT OVERVIEW — 8 summary cards -->
+  <div id="overview" style="padding-top:8px;">
+    <div class="sec-title">
+      <span class="sec-icon" style="background:#e4002b;">$</span>
+      Statement Overview
+    </div>
+    <div class="summary-cards">
+      <!-- Generate 6-8 cards here. Use .value.red for spending, .value.blue for averages, .value.green for positive metrics, etc.
+           If multi-month data is available, add delta tags:
+           <span class="delta-tag up">&#9650; +41.4%</span>
+           <div class="delta-note">vs $XXX in Jan cycle</div>
+      -->
+    </div>
+  </div>
+
+  <!-- SECTION 2: KEY INSIGHTS — 4-6 insight cards -->
+  <div id="insights">
+    <div class="sec-title">
+      <span class="sec-icon" style="background:#f59e0b;">!</span>
+      Key Insights
+    </div>
+    <div class="insights">
+      <div class="insight-grid">
+        <!-- Generate insight cards here using insight-alert, insight-warn, insight-good, insight-info classes.
+             CRITICAL: Every dollar amount must match computed values from the transaction data. -->
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: SPENDING ANALYSIS — 8 charts in 2-column rows -->
+  <div id="charts">
+    <div class="sec-title">
+      <span class="sec-icon" style="background:#2563eb;">&#9776;</span>
+      Spending Analysis
+    </div>
+    <div class="chart-row">
+      <div class="chart-box"><h3>Spending by Category</h3><canvas id="pieChart"></canvas></div>
+      <div class="chart-box"><h3>Category Breakdown</h3><canvas id="barChart"></canvas></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-box"><h3>Daily Spending Trend</h3><canvas id="lineChart"></canvas></div>
+      <div class="chart-box"><h3>Top 10 Merchants</h3><canvas id="merchantBar"></canvas></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-box"><h3>Spending by Day of Week</h3><canvas id="dowChart"></canvas></div>
+      <div class="chart-box"><h3>Transaction Size Distribution</h3><canvas id="histChart"></canvas></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-box"><h3>Cumulative Spending Over Cycle</h3><canvas id="burnChart"></canvas></div>
+      <div class="chart-box">
+        <h3>Fixed vs Variable Spending</h3>
+        <canvas id="fixedVarChart"></canvas>
+        <div class="chip-legend">
+          <span><span class="chip-dot" style="background:#2563eb;"></span> Fixed (recurring/predictable)</span>
+          <span><span class="chip-dot" style="background:#f59e0b;"></span> Variable (discretionary)</span>
+        </div>
+        <div class="fixed-breakdown" id="fixedBreakdownDetail"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 4: CATEGORY BREAKDOWN TABLE + BUDGET TARGETS -->
+  <div id="categories">
+    <div class="sec-title">
+      <span class="sec-icon" style="background:#16a34a;">&#9635;</span>
+      Expense Breakdown by Category
+    </div>
+    <div class="section" style="margin-top:-4px;">
+      <table>
+        <thead><tr>
+          <th>Category</th><th>Items</th>
+          <th class="amount">Amount (<!-- CURRENCY_SYMBOL -->)</th>
+          <th class="pct">% of Total</th>
+          <th class="amount">Avg (<!-- CURRENCY_SYMBOL -->)</th>
+        </tr></thead>
+        <tbody id="catTable"></tbody>
+      </table>
+      <div class="budget-section">
+        <h3 style="font-size:15px;font-weight:600;margin:20px 0 6px;color:#222;">Budget Targets vs Actual</h3>
+        <p style="font-size:12px;color:#888;margin-bottom:12px;">Auto-suggested budgets based on typical spending ranges. Adjust targets to fit your personal goals.</p>
+        <div id="budgetBars"></div>
+        <div class="budget-legend">
+          <span><span class="dot" style="background:#16a34a;"></span> Under 80%</span>
+          <span><span class="dot" style="background:#f59e0b;"></span> 80–100%</span>
+          <span><span class="dot" style="background:#ef4444;"></span> Over budget</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 5: ALL TRANSACTIONS — filterable, sortable, with anomaly detection -->
+  <div id="transactions">
+    <div class="sec-title">
+      <span class="sec-icon" style="background:#8b5cf6;">&#9776;</span>
+      All Transactions
+      <span class="sec-count" id="txnCount"></span>
+    </div>
+    <div class="section" style="margin-top:-4px;">
+      <div class="filter-section">
+        <div class="filter-row">
+          <span class="filter-label">Category</span>
+          <div class="filter-bar" id="filterBar"></div>
+        </div>
+        <div class="filter-row">
+          <span class="filter-label">Merchant</span>
+          <select class="merchant-select" id="merchantSelect"><option value="">All Merchants</option></select>
+          <input type="text" class="search-box" id="searchBox" placeholder="Search descriptions...">
+          <button class="filter-btn anomaly-btn" id="anomalyToggle">&#9888; Anomalies Only</button>
+          <button class="filter-reset" id="resetFilters">Reset All</button>
+        </div>
+      </div>
+      <table>
+        <thead><tr>
+          <th class="sortable" data-col="date">Date <span class="sort-arrow" id="sort-date">&#9650;&#9660;</span></th>
+          <th>Description</th>
+          <th>Category</th>
+          <th class="amount sortable" data-col="amt">Amount (<!-- CURRENCY_SYMBOL -->) <span class="sort-arrow" id="sort-amt">&#9650;&#9660;</span></th>
+        </tr></thead>
+        <tbody id="txnTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SECTION 6: ACTION PLAN -->
+  <div id="actions">
+    <div class="sec-title">
+      <span class="sec-icon" style="background:#16a34a;">&#10003;</span>
+      Action Plan to Optimize Your Spending
+    </div>
+    <div class="action-plan">
+      <div class="savings-header">
+        <div class="big-num">~<!-- CURRENCY_SYMBOL --><!-- SAVINGS_RANGE --></div>
+        <p><strong>Estimated monthly savings</strong> if all actions below are taken — no major lifestyle changes needed. Start with the Quick Wins table at the bottom.</p>
+      </div>
+      <div class="action-grid">
+        <!-- Generate action cards here using .action-card.high/.med/.low/.good
+             CRITICAL: All dollar amounts must match computed values.
+             Savings header total must equal sum of all individual card savings. -->
+      </div>
+      <div class="quick-wins">
+        <h3 style="font-size:15px;font-weight:600;margin:20px 0 10px;color:#222;">Quick Wins — Start Here</h3>
+        <table>
+          <thead><tr><th>Action</th><th style="text-align:center;">Effort</th><th style="text-align:right;">Monthly Saving</th></tr></thead>
+          <tbody>
+            <!-- Generate quick win rows. Total row must equal sum of individual items. -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<button class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">&#8593;</button>
+
+<div class="footer">Generated <!-- TODAY_DATE --> — <!-- CARD_NAME --> Statement Analysis</div>
+
+<script>
+// Currency formatter — adapt to detected currency
+const CURRENCY_SYMBOL = '<!-- CURRENCY_SYMBOL -->';
+const CUR = v => CURRENCY_SYMBOL + v.toFixed(2);
+
+// HTML escaping — prevents layout breakage from special chars in merchant names (e.g. H&M, Ben & Jerry's)
+const escHtml = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// ── TRANSACTION DATA ──
+// Populate as array of objects: {date:"DD/MM", desc:"Merchant name", amt:12.34, cat:"Category"}
+const transactions = [
+  // <!-- TRANSACTIONS_DATA -->
+];
+
+// ── CATEGORY COLORS ──
+// Assign a unique color to each category. Use these consistently across charts and tables.
+const catColors = {
+  // <!-- CATEGORY_COLORS -->
+};
+
+// ── AGGREGATE ──
+const catTotals = {};
+transactions.forEach(t => { catTotals[t.cat] = (catTotals[t.cat]||0) + t.amt; });
+const catEntries = Object.entries(catTotals).sort((a,b) => b[1]-a[1]);
+const totalSpend = catEntries.reduce((s,e) => s+e[1], 0);
+
+// ── SCROLL HANDLING: mini header + scroll-to-top + active nav ──
+const miniHeader = document.getElementById('miniHeader');
+const mainHeader = document.getElementById('mainHeader');
+const mainNav = document.getElementById('mainNav');
+const scrollTopBtn = document.getElementById('scrollTop');
+const sectionIds = ['overview','insights','charts','categories','transactions','actions'];
+const navLinks = mainNav.querySelectorAll('a');
+
+// Mark Overview as active on initial load (user starts at top)
+navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#overview'));
+
+// "Overview" click scrolls to top of page (shows full header)
+navLinks.forEach(a => {
+  a.addEventListener('click', e => {
+    if (a.getAttribute('href') === '#overview') {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  });
+});
+
+window.addEventListener('scroll', () => {
+  const headerBottom = mainHeader.offsetTop + mainHeader.offsetHeight;
+  const scrolled = window.scrollY > headerBottom;
+  miniHeader.classList.toggle('visible', scrolled);
+  mainNav.classList.toggle('pushed', scrolled);
+  scrollTopBtn.style.display = window.scrollY > 400 ? 'block' : 'none';
+  let currentSection = '';
+  const offset = 120;
+  sectionIds.forEach(id => { const el = document.getElementById(id); if (el && el.getBoundingClientRect().top < offset) currentSection = id; });
+  navLinks.forEach(a => { a.classList.toggle('active', a.getAttribute('href') === '#' + currentSection); });
+});
+
+// ── CROSSHAIR TOOLTIP PLUGIN ──
+const crosshairPlugin = {
+  id: 'crosshair',
+  afterDraw(chart) {
+    if (chart.tooltip && chart.tooltip._active && chart.tooltip._active.length) {
+      const ctx = chart.ctx;
+      const x = chart.tooltip._active[0].element.x;
+      const topY = chart.scales.y ? chart.scales.y.top : chart.chartArea.top;
+      const bottomY = chart.scales.y ? chart.scales.y.bottom : chart.chartArea.bottom;
+      ctx.save();
+      ctx.beginPath(); ctx.moveTo(x, topY); ctx.lineTo(x, bottomY);
+      ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.setLineDash([4, 3]);
+      ctx.stroke(); ctx.restore();
+    }
+  }
+};
+const crosshairTooltip = { mode: 'index', intersect: false };
+const crosshairHover = { mode: 'index', intersect: false };
+
+// ── CHARTS ──
+// 1. Doughnut — Spending by Category
+new Chart(document.getElementById('pieChart'), {
+  type:'doughnut',
+  data:{ labels:catEntries.map(e=>e[0]), datasets:[{data:catEntries.map(e=>+e[1].toFixed(2)),backgroundColor:catEntries.map(e=>catColors[e[0]]||'#ccc'),borderWidth:2,borderColor:'#fff'}]},
+  options:{responsive:true,plugins:{legend:{position:'right',labels:{boxWidth:12,padding:10,font:{size:12}}},tooltip:{callbacks:{label:ctx=>{const v=ctx.raw;return ' '+ctx.label+': '+CUR(Number(v))+' ('+(v/totalSpend*100).toFixed(1)+'%)'}}}}}
+});
+
+// 2. Horizontal Bar — Category Breakdown
+new Chart(document.getElementById('barChart'), {
+  type:'bar',
+  data:{labels:catEntries.map(e=>e[0]),datasets:[{label:'Amount',data:catEntries.map(e=>+e[1].toFixed(2)),backgroundColor:catEntries.map(e=>catColors[e[0]]||'#ccc'),borderRadius:6,barPercentage:0.65}]},
+  options:{indexAxis:'y',responsive:true,interaction:crosshairTooltip,plugins:{legend:{display:false},tooltip:{...crosshairTooltip,callbacks:{label:ctx=>' '+CUR(ctx.parsed.x)}}},scales:{x:{grid:{display:false},ticks:{callback:v=>CUR(v)},title:{display:true,text:'Amount',font:{size:11},color:'#999'}},y:{grid:{display:false}}}}
+});
+
+// 3. Line — Daily Spending Trend (with crosshair)
+const dailyMap={};transactions.forEach(t=>{dailyMap[t.date]=(dailyMap[t.date]||0)+t.amt});
+const allDates=[...new Set(transactions.map(t=>t.date))].sort((a,b)=>{const[ad,am]=a.split('/').map(Number),[bd,bm]=b.split('/').map(Number);return(am*100+ad)-(bm*100+bd)});
+new Chart(document.getElementById('lineChart'), {
+  type:'line',
+  plugins:[crosshairPlugin],
+  data:{labels:allDates,datasets:[{label:'Daily',data:allDates.map(d=>+(dailyMap[d]||0).toFixed(2)),borderColor:'#e4002b',backgroundColor:'rgba(228,0,43,0.08)',fill:true,tension:0.3,pointRadius:4,pointBackgroundColor:'#e4002b'}]},
+  options:{responsive:true,interaction:crosshairTooltip,hover:crosshairHover,plugins:{legend:{display:false},tooltip:{...crosshairTooltip,callbacks:{label:ctx=>' '+CUR(ctx.parsed.y)}}},scales:{y:{ticks:{callback:v=>CUR(v)},grid:{color:'#f0f0f0'},title:{display:true,text:'Amount',font:{size:11},color:'#999'}},x:{grid:{display:false},ticks:{maxRotation:45}}}}
+});
+
+// 4. Horizontal Bar — Top 10 Merchants (with crosshair)
+const merchantMap={};transactions.forEach(t=>{merchantMap[t.desc]=(merchantMap[t.desc]||0)+t.amt});
+const topMerchants=Object.entries(merchantMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
+new Chart(document.getElementById('merchantBar'), {
+  type:'bar',
+  data:{labels:topMerchants.map(e=>e[0]),datasets:[{label:'Spent',data:topMerchants.map(e=>+e[1].toFixed(2)),backgroundColor:'#2563eb',borderRadius:6,barPercentage:0.6}]},
+  options:{indexAxis:'y',responsive:true,interaction:crosshairTooltip,plugins:{legend:{display:false},tooltip:{...crosshairTooltip,callbacks:{label:ctx=>' '+CUR(ctx.parsed.x)}}},scales:{x:{grid:{display:false},ticks:{callback:v=>CUR(v)},title:{display:true,text:'Amount',font:{size:11},color:'#999'}},y:{grid:{display:false},ticks:{font:{size:11}}}}}
+});
+
+// 5. Bar — Spending by Day of Week (with crosshair)
+const dowNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],dowTotals=[0,0,0,0,0,0,0],dowCounts=[0,0,0,0,0,0,0];
+// Adapt date parsing to statement's date format (DD/MM or DD/MM/YYYY)
+// Year is derived from the first full-date transaction found; falls back to current year for DD/MM format
+const STMT_YEAR = (()=>{for(const t of transactions){const p=t.date.split('/');if(p.length>2)return+p[2];}return new Date().getFullYear();})();
+transactions.forEach(t=>{const parts=t.date.split('/').map(Number);const dd=parts[0],mm=parts[1],yy=parts[2]||STMT_YEAR;const d=new Date(yy,mm-1,dd);const dow=d.getDay();dowTotals[dow]+=t.amt;dowCounts[dow]++});
+new Chart(document.getElementById('dowChart'), {
+  type:'bar',
+  data:{labels:dowNames,datasets:[{label:'Total',data:dowTotals.map(v=>+v.toFixed(2)),backgroundColor:'rgba(37,99,235,0.7)',borderRadius:6,barPercentage:0.5},{label:'Avg/Txn',data:dowTotals.map((v,i)=>dowCounts[i]?+(v/dowCounts[i]).toFixed(2):0),backgroundColor:'rgba(245,158,11,0.7)',borderRadius:6,barPercentage:0.5}]},
+  options:{responsive:true,interaction:crosshairTooltip,hover:crosshairHover,plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}},tooltip:{...crosshairTooltip,callbacks:{label:ctx=>' '+ctx.dataset.label+': '+CUR(ctx.parsed.y)}}},scales:{y:{ticks:{callback:v=>CUR(v)},grid:{color:'#f0f0f0'},title:{display:true,text:'Amount',font:{size:11},color:'#999'}},x:{grid:{display:false}}}}
+});
+
+// 6. Histogram — Transaction Size Distribution (with crosshair)
+const bins=['0–5','5–10','10–20','20–50','50+'],binCounts=[0,0,0,0,0],binSums=[0,0,0,0,0];
+transactions.forEach(t=>{const a=t.amt;let i=a<5?0:a<10?1:a<20?2:a<50?3:4;binCounts[i]++;binSums[i]+=a});
+new Chart(document.getElementById('histChart'), {
+  type:'bar',
+  data:{labels:bins,datasets:[{label:'# Txns',data:binCounts,backgroundColor:'rgba(139,92,246,0.7)',borderRadius:6,barPercentage:0.55,yAxisID:'y'},{label:'Total',data:binSums.map(v=>+v.toFixed(2)),backgroundColor:'rgba(236,72,153,0.5)',borderRadius:6,barPercentage:0.55,yAxisID:'y1'}]},
+  options:{responsive:true,interaction:crosshairTooltip,hover:crosshairHover,plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}},tooltip:{...crosshairTooltip,callbacks:{label:ctx=>ctx.datasetIndex===0?' '+ctx.parsed.y+' transactions':' '+CUR(ctx.parsed.y)+' total'}}},scales:{y:{position:'left',ticks:{stepSize:1},grid:{color:'#f0f0f0'},title:{display:true,text:'# Transactions',font:{size:11},color:'#999'}},y1:{position:'right',ticks:{callback:v=>CUR(v)},grid:{display:false},title:{display:true,text:'Total',font:{size:11},color:'#999'}},x:{grid:{display:false}}}}
+});
+
+// 7. Cumulative Spending — Burn Chart (with crosshair + pace line)
+const sortedTxns = [...transactions].sort((a,b) => {
+  const [ad,am]=a.date.split('/').map(Number), [bd,bm]=b.date.split('/').map(Number);
+  return (am*100+ad)-(bm*100+bd);
+});
+const cumDates = []; const cumAmts = [];
+let cumSum = 0;
+sortedTxns.forEach(t => {
+  cumSum += t.amt;
+  if (cumDates.length && cumDates[cumDates.length-1] === t.date) {
+    cumAmts[cumAmts.length-1] = +cumSum.toFixed(2);
+  } else {
+    cumDates.push(t.date);
+    cumAmts.push(+cumSum.toFixed(2));
+  }
+});
+const pacePerDay = totalSpend / cumDates.length;
+const paceData = cumDates.map((_,i) => +((i+1)*pacePerDay).toFixed(2));
+
+new Chart(document.getElementById('burnChart'), {
+  type:'line',
+  plugins:[crosshairPlugin],
+  data:{
+    labels:cumDates,
+    datasets:[
+      {label:'Actual Cumulative',data:cumAmts,borderColor:'#e4002b',backgroundColor:'rgba(228,0,43,0.08)',fill:true,tension:0.3,pointRadius:3,pointBackgroundColor:'#e4002b',borderWidth:2.5},
+      {label:'Even Pace',data:paceData,borderColor:'#94a3b8',borderDash:[6,4],borderWidth:1.5,pointRadius:0,fill:false}
+    ]
+  },
+  options:{responsive:true,interaction:crosshairTooltip,hover:crosshairHover,plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}},tooltip:{...crosshairTooltip,callbacks:{label:ctx=>' '+ctx.dataset.label+': '+CUR(ctx.parsed.y)}}},scales:{y:{ticks:{callback:v=>CUR(v)},grid:{color:'#f0f0f0'},title:{display:true,text:'Cumulative',font:{size:11},color:'#999'}},x:{grid:{display:false},ticks:{maxRotation:45}}}}
+});
+
+// 8. Fixed vs Variable Spending — Doughnut with breakdown
+const fixedCategories = ['Transport','Subscriptions','Government/Fees'];
+// Adapt: add other recurring categories as needed (insurance, utilities, etc.)
+let fixedTotal = 0, variableTotal = 0;
+const fixedBreakdown = {}, variableBreakdown = {};
+transactions.forEach(t => {
+  if (fixedCategories.includes(t.cat)) {
+    fixedTotal += t.amt;
+    fixedBreakdown[t.cat] = (fixedBreakdown[t.cat]||0) + t.amt;
+  } else {
+    variableTotal += t.amt;
+    variableBreakdown[t.cat] = (variableBreakdown[t.cat]||0) + t.amt;
+  }
+});
+new Chart(document.getElementById('fixedVarChart'), {
+  type:'doughnut',
+  data:{
+    labels:['Fixed (Recurring)', 'Variable (Discretionary)'],
+    datasets:[{
+      data:[+fixedTotal.toFixed(2), +variableTotal.toFixed(2)],
+      backgroundColor:['#2563eb','#f59e0b'],
+      borderWidth:3,
+      borderColor:'#fff'
+    }]
+  },
+  options:{responsive:true,plugins:{legend:{position:'right',labels:{boxWidth:14,padding:12,font:{size:12}}},tooltip:{callbacks:{label:ctx=>{const v=ctx.raw;const pct=(v/totalSpend*100).toFixed(1);return ' '+ctx.label+': '+CUR(v)+' ('+pct+'%)'}}}}}
+});
+
+// Fixed breakdown detail
+const fbEl = document.getElementById('fixedBreakdownDetail');
+const fixedEntries = Object.entries(fixedBreakdown).sort((a,b) => b[1]-a[1]);
+const varEntries = Object.entries(variableBreakdown).sort((a,b) => b[1]-a[1]);
+let fbHTML = '<div class="fb-header" style="margin-top:8px;">Fixed expenses breakdown:</div>';
+fixedEntries.forEach(([cat,amt]) => {
+  fbHTML += `<div class="fb-row"><span class="fb-cat"><span class="cat-dot" style="background:${catColors[cat]||'#ccc'}"></span>${cat}</span><span class="fb-amt">${CUR(amt)}</span></div>`;
+});
+fbHTML += `<div class="fb-row" style="font-weight:700;border-top:1px solid #ddd;margin-top:4px;padding-top:6px;"><span>Total Fixed</span><span class="fb-amt">${CUR(fixedTotal)} (${(fixedTotal/totalSpend*100).toFixed(1)}%)</span></div>`;
+fbHTML += '<div class="fb-header" style="margin-top:12px;">Variable expenses breakdown:</div>';
+varEntries.forEach(([cat,amt]) => {
+  fbHTML += `<div class="fb-row"><span class="fb-cat"><span class="cat-dot" style="background:${catColors[cat]||'#ccc'}"></span>${cat}</span><span class="fb-amt">${CUR(amt)}</span></div>`;
+});
+fbHTML += `<div class="fb-row" style="font-weight:700;border-top:1px solid #ddd;margin-top:4px;padding-top:6px;"><span>Total Variable</span><span class="fb-amt">${CUR(variableTotal)} (${(variableTotal/totalSpend*100).toFixed(1)}%)</span></div>`;
+fbEl.innerHTML = fbHTML;
+
+// ── BUDGET TARGETS WITH PROGRESS BARS ──
+const budgetTargets = {
+  // <!-- BUDGET_TARGETS: auto-suggest by rounding up actual*1.2 to nearest 5 or 10 -->
+};
+const budgetBarsEl = document.getElementById('budgetBars');
+function renderBudgetBars() {
+  budgetBarsEl.innerHTML = '';
+  catEntries.forEach(([cat, amt]) => {
+    const budget = budgetTargets[cat] || Math.ceil(amt * 1.2 / 10) * 10;
+    const pct = (amt / budget * 100);
+    const barPct = Math.min(pct, 100);
+    const cls = pct > 100 ? 'over' : pct > 80 ? 'warn' : 'safe';
+    const statusText = amt > budget ? ` (${CUR(amt-budget)} over)` : ` (${CUR(budget-amt)} left)`;
+    // Only show % text inside bar when bar is wide enough to fit it legibly
+    const barLabel = barPct >= 12 ? `<span>${pct.toFixed(0)}%</span>` : '';
+    budgetBarsEl.innerHTML += `
+      <div class="budget-row">
+        <div class="budget-cat"><span class="cat-dot" style="background:${catColors[cat]||'#ccc'}"></span>${cat}</div>
+        <div class="budget-bar-wrap">
+          <div class="budget-bar-fill ${cls}" style="width:${barPct}%">${barLabel}</div>
+        </div>
+        <div class="budget-values"><strong>${CUR(amt)}</strong> / ${CURRENCY_SYMBOL}<input class="budget-input" type="number" min="0" step="5" value="${budget}" data-cat="${cat}">${statusText}</div>
+      </div>`;
+  });
+  budgetBarsEl.querySelectorAll('.budget-input').forEach(inp => {
+    inp.addEventListener('change', e => {
+      const cat = e.target.dataset.cat;
+      const newVal = parseFloat(e.target.value);
+      if (newVal > 0) { budgetTargets[cat] = newVal; renderBudgetBars(); }
+    });
+  });
+}
+renderBudgetBars();
+
+// ── ANOMALY DETECTION ──
+const catStats = {};
+transactions.forEach(t => {
+  if (!catStats[t.cat]) catStats[t.cat] = { sum: 0, count: 0, amounts: [] };
+  catStats[t.cat].sum += t.amt;
+  catStats[t.cat].count++;
+  catStats[t.cat].amounts.push(t.amt);
+});
+Object.keys(catStats).forEach(c => {
+  const s = catStats[c];
+  s.avg = s.sum / s.count;
+  const variance = s.amounts.reduce((v, a) => v + (a - s.avg) ** 2, 0) / s.count;
+  s.stddev = Math.sqrt(variance);
+});
+// Flag transactions > category avg + 1.5*stddev AND above $15 absolute
+function isAnomaly(t) {
+  const cs = catStats[t.cat];
+  if (!cs || cs.count < 3) return null;
+  const threshold = cs.avg + 1.5 * cs.stddev;
+  if (t.amt > threshold && t.amt > 15) {
+    const ratio = (t.amt / cs.avg).toFixed(1);
+    return { level: t.amt > cs.avg + 2.5 * cs.stddev ? 'high' : 'normal', ratio };
+  }
+  return null;
+}
+
+// ── CATEGORY TABLE ──
+const catTableEl=document.getElementById('catTable');
+catEntries.forEach(([cat,amt])=>{const count=transactions.filter(t=>t.cat===cat).length;const avg=count>0?amt/count:0;
+catTableEl.innerHTML+=`<tr><td><span class="cat-dot" style="background:${catColors[cat]||'#ccc'}"></span>${cat}</td><td>${count}</td><td class="amount">${CUR(amt)}</td><td class="pct">${totalSpend>0?(amt/totalSpend*100).toFixed(1):'0.0'}%</td><td class="amount">${CUR(avg)}</td></tr>`});
+catTableEl.innerHTML+=`<tr style="font-weight:700;border-top:2px solid #ddd"><td>Total</td><td>${transactions.length}</td><td class="amount">${CUR(totalSpend)}</td><td class="pct">100%</td><td class="amount">${transactions.length>0?CUR(totalSpend/transactions.length):CUR(0)}</td></tr>`;
+
+// ── TRANSACTION TABLE WITH FILTER + SORT + SEARCH + ANOMALY ──
+let activeCat=null, activeMerchant=null, searchTerm='', sortCol='date', sortDir='asc', anomalyOnly=false;
+
+// Anomaly toggle
+const anomalyToggleBtn = document.getElementById('anomalyToggle');
+anomalyToggleBtn.onclick = () => {
+  anomalyOnly = !anomalyOnly;
+  anomalyToggleBtn.classList.toggle('active', anomalyOnly);
+  renderTxnTable();
+};
+
+function dateVal(d){const[dd,mm]=d.split('/').map(Number);return mm*100+dd;}
+
+const allCats=['All',...catEntries.map(e=>e[0])];
+const filterBar=document.getElementById('filterBar');
+allCats.forEach(cat=>{const btn=document.createElement('button');btn.className='filter-btn'+(cat==='All'?' active':'');btn.textContent=cat;btn.onclick=()=>{document.querySelectorAll('#filterBar .filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');activeCat=cat==='All'?null:cat;updateMerchantDropdown();renderTxnTable()};filterBar.appendChild(btn)});
+
+const merchantSelect=document.getElementById('merchantSelect');
+function updateMerchantDropdown(){const rel=activeCat?transactions.filter(t=>t.cat===activeCat):transactions;const merchants=[...new Set(rel.map(t=>t.desc))].sort();merchantSelect.innerHTML='<option value="">All Merchants ('+merchants.length+')</option>';merchants.forEach(m=>{const c=rel.filter(t=>t.desc===m).length;const total=rel.filter(t=>t.desc===m).reduce((s,t)=>s+t.amt,0);merchantSelect.innerHTML+=`<option value="${escHtml(m)}">${escHtml(m)} (${c}x — ${CUR(total)})</option>`});if(activeMerchant&&!merchants.includes(activeMerchant)){activeMerchant=null;merchantSelect.value=''}}
+updateMerchantDropdown();
+merchantSelect.onchange=()=>{activeMerchant=merchantSelect.value||null;renderTxnTable()};
+
+document.getElementById('searchBox').oninput=e=>{searchTerm=e.target.value.toLowerCase();renderTxnTable()};
+
+document.getElementById('resetFilters').onclick=()=>{activeCat=null;activeMerchant=null;searchTerm='';sortCol='date';sortDir='asc';anomalyOnly=false;anomalyToggleBtn.classList.remove('active');document.getElementById('searchBox').value='';document.querySelectorAll('#filterBar .filter-btn').forEach(b=>b.classList.remove('active'));document.querySelector('#filterBar .filter-btn').classList.add('active');merchantSelect.value='';updateMerchantDropdown();updateSortArrows();renderTxnTable()};
+
+document.querySelectorAll('th.sortable').forEach(th=>{th.onclick=()=>{const col=th.dataset.col;if(sortCol===col){sortDir=sortDir==='asc'?'desc':'asc'}else{sortCol=col;sortDir=col==='amt'?'desc':'asc'}updateSortArrows();renderTxnTable()}});
+function updateSortArrows(){document.querySelectorAll('.sort-arrow').forEach(el=>el.classList.remove('active'));const activeEl=document.getElementById('sort-'+sortCol);if(activeEl){activeEl.classList.add('active');activeEl.innerHTML=sortDir==='asc'?'&#9650;':'&#9660;'}}
+
+function renderTxnTable(){
+  const txnEl=document.getElementById('txnTable');txnEl.innerHTML='';
+  let filtered=[...transactions];
+  if(activeCat) filtered=filtered.filter(t=>t.cat===activeCat);
+  if(activeMerchant) filtered=filtered.filter(t=>t.desc===activeMerchant);
+  if(searchTerm) filtered=filtered.filter(t=>t.desc.toLowerCase().includes(searchTerm)||t.cat.toLowerCase().includes(searchTerm));
+  if(anomalyOnly) filtered=filtered.filter(t=>isAnomaly(t)!==null);
+  filtered.sort((a,b)=>{let cmp=0;if(sortCol==='amt') cmp=a.amt-b.amt;else cmp=dateVal(a.date)-dateVal(b.date);return sortDir==='asc'?cmp:-cmp});
+  let sum=0;
+  filtered.forEach(t=>{
+    sum+=t.amt;
+    const anom=isAnomaly(t);
+    const cs=catStats[t.cat];
+    const anomBadge=anom?`<span class="anomaly-badge${anom.level==='high'?' high':''}">&#9888; ${anom.ratio}x avg<span class="anomaly-tip">This transaction (${CUR(t.amt)}) is <strong>${anom.ratio}x</strong> the average of <strong>${CUR(cs.avg)}</strong> for ${t.cat} transactions.</span></span>`:'';
+    const rowCls=anom?'anomaly-row':'';
+    txnEl.innerHTML+=`<tr class="${rowCls}"><td>${t.date}</td><td>${escHtml(t.desc)}${anomBadge}</td><td><span class="cat-dot" style="background:${catColors[t.cat]||'#ccc'}"></span>${t.cat}</td><td class="amount">${CUR(t.amt)}</td></tr>`;
+  });
+  const labels=[];if(activeCat)labels.push(activeCat);if(activeMerchant)labels.push(activeMerchant);if(searchTerm)labels.push('"'+searchTerm+'"');
+  const desc=labels.length?' — '+labels.join(' > '):'';
+  txnEl.innerHTML+=`<tr style="font-weight:700;border-top:2px solid #ddd"><td colspan="3">${filtered.length} transaction${filtered.length!==1?'s':''}${desc}</td><td class="amount">${CUR(sum)}</td></tr>`;
+  document.getElementById('txnCount').textContent='Showing '+filtered.length+' of '+transactions.length;
+}
+renderTxnTable();
+</script>
+</body>
+</html>
