@@ -209,6 +209,100 @@ th .sort-arrow.active { opacity: 1; color: #e4002b; }
 
 .footer { text-align: center; padding: 20px; color: #aaa; font-size: 12px; }
 @media print { .nav, .scroll-top, .filter-section, .filter-reset, .mini-header, .budget-section { display: none !important; } body { background: #fff; } }
+
+/* ── MOBILE-FRIENDLY ENHANCEMENTS ── */
+
+/* Horizontal scroll wrapper for wide tables on small screens */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Smooth nav horizontal scroll, hide distracting scrollbar */
+.nav-inner { -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.nav-inner::-webkit-scrollbar { display: none; }
+
+/* Right-edge gradient on nav hints at horizontal scrollability on mobile */
+@media (max-width: 640px) {
+  .nav::after { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 28px; background: linear-gradient(to left, #fff 60%, transparent); pointer-events: none; z-index: 1; }
+}
+
+/* Improve tap responsiveness — remove 300ms double-tap zoom delay */
+button, select, input { touch-action: manipulation; }
+
+/* Anomaly tooltips: hover works on desktop; use .tip-open class for touch/click on mobile */
+@media (hover: none) {
+  .anomaly-badge:hover .anomaly-tip { display: none; }
+  .anomaly-badge.tip-open .anomaly-tip { display: block; }
+}
+
+/* Constrain anomaly tooltip width on small screens to stay within viewport */
+@media (max-width: 640px) {
+  .anomaly-badge .anomaly-tip { width: 200px; font-size: 10px; left: auto; right: 0; transform: none; }
+  .anomaly-badge .anomaly-tip::after { left: auto; right: 14px; transform: none; }
+}
+
+/* ── RESPONSIVE: 640px and below (phones) ── */
+@media (max-width: 640px) {
+  /* Header */
+  .header { padding: 18px 16px; }
+  .header h1 { font-size: 20px; }
+  .header p { font-size: 11px; line-height: 1.7; }
+
+  /* Mini header — show only essential stat on very small screens */
+  .mini-header .mini-stats span:not(:first-child),
+  .mini-header .mini-stats .mini-sep { display: none; }
+  .mini-header .mini-title { font-size: 12px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .mini-header .mini-stats { flex-shrink: 0; }
+
+  /* Container & sections */
+  .container { padding: 12px; }
+  .section, .insights, .action-plan { padding: 14px; }
+  .chart-box { padding: 12px; }
+  .card { padding: 14px; }
+  .card .value { font-size: 20px; }
+
+  /* Nav links — compact for small screens */
+  .nav a { padding: 10px 12px; font-size: 12px; }
+
+  /* Filter section — stack controls vertically for usability */
+  .filter-row { flex-direction: column; align-items: stretch; gap: 8px; }
+  .filter-label { min-width: unset; }
+  .filter-bar { gap: 6px; }
+  .filter-btn { padding: 8px 12px; font-size: 12px; min-height: 36px; }
+  .filter-reset { padding: 8px 12px; min-height: 36px; }
+  .merchant-select { min-width: unset; width: 100%; font-size: 13px; padding: 8px 12px; min-height: 36px; }
+  .search-box { width: 100%; font-size: 13px; padding: 8px 14px; }
+
+  /* Tables — reduce padding, shrink font slightly */
+  table { font-size: 12px; }
+  th { padding: 8px; font-size: 10px; }
+  td { padding: 7px 8px; }
+
+  /* Budget bars — category label + bar on row 1, values on row 2 */
+  .budget-row { flex-wrap: wrap; row-gap: 6px; }
+  .budget-cat { min-width: unset; }
+  .budget-values { min-width: unset; width: 100%; text-align: left; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; }
+  .budget-input { width: 65px; }
+
+  /* Insights */
+  .insight-item { padding: 10px 12px; }
+  .insight-icon { width: 32px; height: 32px; font-size: 14px; }
+
+  /* Action plan savings header */
+  .savings-header { flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px 16px; }
+  .savings-header .big-num { font-size: 26px; }
+
+  /* Scroll-to-top button — larger touch target, avoid overlap with mobile browser chrome */
+  .scroll-top { bottom: 20px; right: 20px; width: 44px; height: 44px; font-size: 18px; }
+
+  /* Scroll offsets — compensate for slightly shorter mobile nav */
+  [id="overview"], [id="insights"], [id="charts"], [id="categories"], [id="transactions"], [id="actions"] { scroll-margin-top: 100px; }
+}
+
+/* ── RESPONSIVE: 400px and below (very small phones) ── */
+@media (max-width: 400px) {
+  .summary-cards { grid-template-columns: 1fr; }
+  .card .value { font-size: 18px; }
+  .mini-header .mini-title { font-size: 11px; }
+}
 </style>
 </head>
 <body>
@@ -230,7 +324,7 @@ th .sort-arrow.active { opacity: 1; color: #e4002b; }
 <div class="header" id="mainHeader">
   <div class="header-inner">
     <h1><!-- CARD_NAME --> — Expense Analysis</h1>
-    <p>Statement period: <!-- PERIOD_START --> – <!-- PERIOD_END --> &nbsp;|&nbsp; Card ending <!-- CARD_LAST4 --> &nbsp;|&nbsp; Statement date: <!-- STATEMENT_DATE --></p>
+    <p>Statement period: <!-- PERIOD_START --> – <!-- PERIOD_END --> | Card ending <!-- CARD_LAST4 --> | Statement date: <!-- STATEMENT_DATE --></p>
   </div>
 </div>
 
@@ -313,7 +407,7 @@ th .sort-arrow.active { opacity: 1; color: #e4002b; }
       Expense Breakdown by Category
     </div>
     <div class="section" style="margin-top:-4px;">
-      <table>
+      <div class="table-scroll"><table>
         <thead><tr>
           <th>Category</th><th>Items</th>
           <th class="amount">Amount (<!-- CURRENCY_SYMBOL -->)</th>
@@ -321,7 +415,7 @@ th .sort-arrow.active { opacity: 1; color: #e4002b; }
           <th class="amount">Avg (<!-- CURRENCY_SYMBOL -->)</th>
         </tr></thead>
         <tbody id="catTable"></tbody>
-      </table>
+      </table></div>
       <div class="budget-section">
         <h3 style="font-size:15px;font-weight:600;margin:20px 0 6px;color:#222;">Budget Targets vs Actual</h3>
         <p style="font-size:12px;color:#888;margin-bottom:12px;">Auto-suggested budgets based on typical spending ranges. Adjust targets to fit your personal goals.</p>
@@ -356,7 +450,7 @@ th .sort-arrow.active { opacity: 1; color: #e4002b; }
           <button class="filter-reset" id="resetFilters">Reset All</button>
         </div>
       </div>
-      <table>
+      <div class="table-scroll"><table>
         <thead><tr>
           <th class="sortable" data-col="date">Date <span class="sort-arrow" id="sort-date">&#9650;&#9660;</span></th>
           <th>Description</th>
@@ -364,7 +458,7 @@ th .sort-arrow.active { opacity: 1; color: #e4002b; }
           <th class="amount sortable" data-col="amt">Amount (<!-- CURRENCY_SYMBOL -->) <span class="sort-arrow" id="sort-amt">&#9650;&#9660;</span></th>
         </tr></thead>
         <tbody id="txnTable"></tbody>
-      </table>
+      </table></div>
     </div>
   </div>
 
@@ -386,12 +480,12 @@ th .sort-arrow.active { opacity: 1; color: #e4002b; }
       </div>
       <div class="quick-wins">
         <h3 style="font-size:15px;font-weight:600;margin:20px 0 10px;color:#222;">Quick Wins — Start Here</h3>
-        <table>
+        <div class="table-scroll"><table>
           <thead><tr><th>Action</th><th style="text-align:center;">Effort</th><th style="text-align:right;">Monthly Saving</th></tr></thead>
           <tbody>
             <!-- Generate quick win rows. Total row must equal sum of individual items. -->
           </tbody>
-        </table>
+        </table></div>
       </div>
     </div>
   </div>
@@ -409,6 +503,9 @@ const CUR = v => CURRENCY_SYMBOL + v.toFixed(2);
 
 // HTML escaping — prevents layout breakage from special chars in merchant names (e.g. H&M, Ben & Jerry's)
 const escHtml = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// Responsive chart legend position — bottom on mobile, caller-specified default on larger screens
+const legendPos = (def = 'right') => window.innerWidth <= 640 ? 'bottom' : def;
 
 // ── TRANSACTION DATA ──
 // Populate as array of objects: {date:"DD/MM", desc:"Merchant name", amt:12.34, cat:"Category"}
@@ -485,7 +582,7 @@ const crosshairHover = { mode: 'index', intersect: false };
 new Chart(document.getElementById('pieChart'), {
   type:'doughnut',
   data:{ labels:catEntries.map(e=>e[0]), datasets:[{data:catEntries.map(e=>+e[1].toFixed(2)),backgroundColor:catEntries.map(e=>catColors[e[0]]||'#ccc'),borderWidth:2,borderColor:'#fff'}]},
-  options:{responsive:true,plugins:{legend:{position:'right',labels:{boxWidth:12,padding:10,font:{size:12}}},tooltip:{callbacks:{label:ctx=>{const v=ctx.raw;return ' '+ctx.label+': '+CUR(Number(v))+' ('+(v/totalSpend*100).toFixed(1)+'%)'}}}}}
+  options:{responsive:true,plugins:{legend:{position:legendPos(),labels:{boxWidth:12,padding:10,font:{size:12}}},tooltip:{callbacks:{label:ctx=>{const v=ctx.raw;return ' '+ctx.label+': '+CUR(Number(v))+' ('+(v/totalSpend*100).toFixed(1)+'%)'}}}}}
 });
 
 // 2. Horizontal Bar — Category Breakdown
@@ -592,7 +689,7 @@ new Chart(document.getElementById('fixedVarChart'), {
       borderColor:'#fff'
     }]
   },
-  options:{responsive:true,plugins:{legend:{position:'right',labels:{boxWidth:14,padding:12,font:{size:12}}},tooltip:{callbacks:{label:ctx=>{const v=ctx.raw;const pct=(v/totalSpend*100).toFixed(1);return ' '+ctx.label+': '+CUR(v)+' ('+pct+'%)'}}}}}
+  options:{responsive:true,plugins:{legend:{position:legendPos(),labels:{boxWidth:14,padding:12,font:{size:12}}},tooltip:{callbacks:{label:ctx=>{const v=ctx.raw;const pct=(v/totalSpend*100).toFixed(1);return ' '+ctx.label+': '+CUR(v)+' ('+pct+'%)'}}}}}
 });
 
 // Fixed breakdown detail
@@ -728,6 +825,21 @@ function renderTxnTable(){
   txnEl.innerHTML+=`<tr style="font-weight:700;border-top:2px solid #ddd"><td colspan="3">${filtered.length} transaction${filtered.length!==1?'s':''}${desc}</td><td class="amount">${CUR(sum)}</td></tr>`;
   document.getElementById('txnCount').textContent='Showing '+filtered.length+' of '+transactions.length;
 }
+// Touch-friendly anomaly tooltips — click/tap toggles tooltip on non-hover (touch) devices.
+// Uses event delegation so it works on dynamically rendered rows.
+document.addEventListener('click', function(e) {
+  const badge = e.target.closest('.anomaly-badge');
+  if (badge) {
+    e.stopPropagation();
+    const wasOpen = badge.classList.contains('tip-open');
+    document.querySelectorAll('.anomaly-badge.tip-open').forEach(b => b.classList.remove('tip-open'));
+    if (!wasOpen) badge.classList.add('tip-open');
+  } else {
+    // Tap outside any badge closes all open tooltips
+    document.querySelectorAll('.anomaly-badge.tip-open').forEach(b => b.classList.remove('tip-open'));
+  }
+});
+
 renderTxnTable();
 </script>
 </body>
