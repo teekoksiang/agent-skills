@@ -206,9 +206,27 @@ const crosshairPlugin = {
 
 Use `interaction: {mode:'index', intersect:false}` on charts that benefit from crosshair behavior.
 
+**Responsive Chart Legends**: Doughnut charts with a right-side legend squish the chart on mobile. Use the `legendPos()` helper (already in the template) so the legend moves to the bottom on small screens:
+
+```javascript
+const legendPos = (def = 'right') => window.innerWidth <= 640 ? 'bottom' : def;
+// then in chart options:
+// options: { plugins: { legend: { position: legendPos() } } }
+```
+
+Apply `legendPos()` to every doughnut chart (Spending by Category, Fixed vs Variable). Bar and line charts with `position:'top'` legends don't need this.
+
 #### Section 4: Expense Breakdown by Category (table + budget targets)
 
 **Table columns**: Category (with color dot), Items count, Amount, % of Total, Avg per transaction. Include a bold totals row.
+
+Wrap every `<table>` in `<div class="table-scroll">` so it scrolls horizontally on narrow screens instead of overflowing:
+
+```html
+<div class="table-scroll"><table>...</table></div>
+```
+
+This applies to the category table, the transaction table, and the Quick Wins table.
 
 **Budget Targets**: Below the category table, add editable budget progress bars for each category. Each row shows:
 - Category name with color dot
@@ -246,7 +264,7 @@ function isAnomaly(t) {
 }
 ```
 
-Anomalous transactions get a warning badge with a hover tooltip explaining why they were flagged (shows ratio vs average, threshold used). The S$15 minimum prevents flagging cheap items.
+Anomalous transactions get a warning badge with a hover/tap tooltip explaining why they were flagged (shows ratio vs average, threshold used). On desktop the tooltip appears on `:hover`; on touch devices the JS click-delegation handler in the template toggles a `.tip-open` class so users can tap the badge to reveal the tooltip and tap outside to dismiss it. The S$15 minimum prevents flagging cheap items.
 
 #### Section 6: Action Plan
 
@@ -275,7 +293,7 @@ The report includes several UX enhancements (all in the template):
 - **Scroll-to-top button** — appears after scrolling 400px
 - **Scroll-margin-top** on all sections — so anchor clicks don't hide section titles behind the sticky nav
 - **Print-friendly CSS** — hides nav, filters, and interactive elements
-- **Responsive design** — 4→2→1 column grids at breakpoints (900px, 768px, 500px)
+- **Responsive design** — 4→2→1 column grids at breakpoints (900px, 768px, 500px). Additional mobile-specific enhancements at ≤640px and ≤400px: compact header/mini-header (mini-header shows only the Spent stat to avoid overflow), stacked filter controls with full-width merchant-select and search-box, larger touch targets (`min-height: 36px`), wrapping budget-bar rows (category+bar on row 1, values on row 2), `touch-action: manipulation` on all inputs/buttons (removes iOS 300ms tap delay), horizontal-scroll wrappers on all tables, and responsive chart legends (doughnuts switch from right to bottom legend on mobile)
 
 ### 7. Data Accuracy Checklist
 
